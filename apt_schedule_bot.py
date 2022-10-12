@@ -1,13 +1,13 @@
-from selenium.webdriver.chrome.service import Service
-from seleniumwire import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
 import configure
 import requests
 import telebot
 from bs4 import BeautifulSoup
 from telebot import types
-import configure
 import pendulum
+from seleniumwire import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
 
 
 def main():
