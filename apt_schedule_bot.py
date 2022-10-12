@@ -9,7 +9,6 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-
 def main():
     bot = telebot.TeleBot(configure.config["token"])
 
