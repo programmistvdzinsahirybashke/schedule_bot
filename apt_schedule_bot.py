@@ -169,6 +169,7 @@ def start_bot():
 
         db_table_val(user_id=us_id, nickname=us_name, username=username)
         bot.reply_to(message, HELP_TEXT, reply_markup=markup)
+        bot.send_photo(message.chat.id, open("screenshots/apt_bot.jpg", 'rb'))
 
     @bot.message_handler(text=['Расписание на сегодня 🗓'])
     def get_text_today(message):
@@ -458,6 +459,7 @@ def start_bot():
                 bot.reply_to(message, f'Подождите {seconds_left} секунд перед выполнение этой команды')
             else:
                 CHAT_BY_DATETIME[message.chat.id] = current_time
+
                 def check_monday(user_id: int):
                     cursor.execute("SELECT user_group FROM test WHERE user_id = ?", (user_id,))
                     group = cursor.fetchone()
@@ -468,38 +470,75 @@ def start_bot():
                     today = datetime.date.today()
                     if calendar.day_name[today.weekday()] == 'Saturday':
                         monday = today + datetime.timedelta(days=2)
-                        response_check_date = requests.get(f'https://almetpt.ru/2020/site/schedule/group/{my_group}/{monday}')
-                        soup = BeautifulSoup(response_check_date.text, 'lxml')
+                        response_check_tomorrow = requests.get(
+                            f'https://almetpt.ru/2020/site/schedule/group/{my_group}/{monday}')
+                        soup = BeautifulSoup(response_check_tomorrow.text, 'lxml')
                         schedule = soup.find("div", class_="container")
 
                         if 'года не опубликовано' in schedule.text:
-                            print("Расписания на понедельник еще нет!")
+                            return "Расписание на понедельник еще не вышло!"
                         else:
-                            for item in schedule:
-                                if item == "":
-                                    item.replace("", "1")
-                            result = f'{schedule.text}'
-                            return format_result(result)
+                            options = webdriver.ChromeOptions()
+                            options.add_argument("--headless")
+                            options.add_argument('--no-sandbox')
+                            options.add_argument("--disable-dev-shm-usage")
+                            options.add_argument("--remote-debugging-port=9222")
+                            driver = webdriver.Chrome(
+                                chrome_options=options,
+                                service=Service(ChromeDriverManager().install())
+                            )
+                            url = f'https://almetpt.ru/2020/site/schedule/group/{my_group}/{monday}'
+                            try:
+                                driver.set_window_size(850, 1050)
+                                driver.get(url=url)
+                                driver.implicitly_wait(60)
+                                screen_id = message.from_user.id
+                                driver.get_screenshot_as_file(f"screenshots/{screen_id}_monday.png")
+                            except Exception as ex:
+                                print(ex)
+                            finally:
+                                driver.close()
+                                driver.quit()
+                            return f"screenshots/{screen_id}_monday.png"
 
                     elif calendar.day_name[today.weekday()] == 'Sunday':
                         monday = today + datetime.timedelta(days=1)
-                        response_check_date = requests.get(f'https://almetpt.ru/2020/site/schedule/group/{my_group}/{monday}')
-                        soup = BeautifulSoup(response_check_date.text, 'lxml')
+                        response_check_tomorrow = requests.get(
+                            f'https://almetpt.ru/2020/site/schedule/group/{my_group}/{monday}')
+                        soup = BeautifulSoup(response_check_tomorrow.text, 'lxml')
                         schedule = soup.find("div", class_="container")
 
                         if 'года не опубликовано' in schedule.text:
-                            print("Расписания на понедельник еще нет!")
+                            return "Расписание на понедельник еще не вышло!"
                         else:
-                            for item in schedule:
-                                if item == "":
-                                    item.replace("", "1")
-                            result = f'{schedule.text}'
-                            return format_result(result)
-                    else:
-                        result = 'Эта кнопка работает только в субботу и воскресенье.'
-                        return format_result(result)
+                            options = webdriver.ChromeOptions()
+                            options.add_argument("--headless")
+                            options.add_argument('--no-sandbox')
+                            options.add_argument("--disable-dev-shm-usage")
+                            options.add_argument("--remote-debugging-port=9222")
+                            driver = webdriver.Chrome(
+                                chrome_options=options,
+                                service=Service(ChromeDriverManager().install())
+                            )
+                            url = f'https://almetpt.ru/2020/site/schedule/group/{my_group}/{monday}'
+                            try:
+                                driver.set_window_size(850, 1050)
+                                driver.get(url=url)
+                                driver.implicitly_wait(60)
+                                screen_id = message.from_user.id
+                                driver.get_screenshot_as_file(f"screenshots/{screen_id}_monday.png")
+                            except Exception as ex:
+                                print(ex)
+                            finally:
+                                driver.close()
+                                driver.quit()
+                            return f"screenshots/{screen_id}_monday.png"
 
-                bot.reply_to(message, check_monday(message.from_user.id))
+                screen = check_monday(message.from_user.id)
+                if screen == "Расписание на завтра еще не вышло!":
+                    bot.reply_to(message, "Расписание на завтра еще не вышло!")
+                else:
+                    bot.send_photo(message.chat.id, open(screen, 'rb'))
 
     @bot.message_handler(text=['Профиль📌'])
     def profile(message):
@@ -516,6 +555,7 @@ def start_bot():
                 bot.reply_to(message, f'Подождите {seconds_left} секунд перед выполнение этой команды')
             else:
                 CHAT_BY_DATETIME[message.chat.id] = current_time
+
                 def show_profile(user_id: int):
                     cursor.execute("SELECT user_group FROM test WHERE user_id = ?", (user_id,))
                     group = cursor.fetchone()
@@ -553,41 +593,11 @@ def start_bot():
 
     @bot.message_handler(chat_id=[702999620], commands=['admin_check'])
     def admin_rep(message):
-        bot.send_message(message.chat.id, "Вы можете использовать эту команду.")
-
-        tomorrow = pendulum.tomorrow('Europe/Moscow').format('YYYY-MM-DD')
-        response_check_tomorrow = requests.get(f'https://almetpt.ru/2020/site/schedule/group/834/{tomorrow}')
-        soup = BeautifulSoup(response_check_tomorrow.text, 'lxml')
-        schedule = soup.find("div", class_="container")
-
-        if 'года не опубликовано' in schedule.text:
-            bot.send_message(message.chat.id, "Расписания нет, рассылка отменена")
-        else:
-            amount_message = 0
-            amount_bad = 0
-            start_time = time.time()
-
-            cursor.execute("SELECT user_id FROM test")
-            all_users = cursor.fetchall()
-            for user_id in range(len(all_users)):
-                user_id = (all_users[user_id][0])
-                try:
-                    bot.send_message(user_id, f"Вышло расписание на завтра!")
-                    amount_message += 1
-                except Exception as e:
-                    amount_bad += 1
-
-            sending_time = time.time() - start_time
-            bot.send_message(message.chat.id,
-                             f'✅ Рассылка окончена\n'
-                             f'❗Отправлено: {amount_message}\n'
-                             f'❗Не отправлено: {amount_bad}\n'
-                             f'🕐 Время выполнения рассылки - {sending_time} секунд'
-                             )
+        bot.send_message(message.chat.id, "Вам разрешено использовать эту команду.")
 
     @bot.message_handler(commands=['admin_check'])
     def not_admin(message):
-        bot.send_message(message.chat.id, "Вы не можете использовать эту команду.")
+        bot.send_message(message.chat.id, "Вам не разрешено использовать эту команду.")
 
     bot.polling(none_stop=True, skip_pending=True)
 
