@@ -533,10 +533,11 @@ def start_bot():
                                 driver.close()
                                 driver.quit()
                             return f"screenshots/{screen_id}_monday.png"
-
+                    else:
+                        bot.reply_to(message, "Эта кнопка работает только в субботу и воскресенье.")
                 screen = check_monday(message.from_user.id)
-                if screen == "Расписание на завтра еще не вышло!":
-                    bot.reply_to(message, "Расписание на завтра еще не вышло!")
+                if screen == "Расписание на понедельник еще не вышло!":
+                    bot.reply_to(message, "Расписание на понедельник еще не вышло!")
                 else:
                     bot.send_photo(message.chat.id, open(screen, 'rb'))
 
@@ -594,6 +595,77 @@ def start_bot():
     @bot.message_handler(chat_id=[702999620], commands=['admin_check'])
     def admin_rep(message):
         bot.send_message(message.chat.id, "Вам разрешено использовать эту команду.")
+
+        cursor.execute("SELECT user_id, user_group FROM test")
+        matches = cursor.fetchall()
+        d = dict(matches)
+        print(d)
+        for key, value in list(d.items()):
+            if value is None:
+                del d[key]
+        print(d)
+
+        tomorrow = pendulum.tomorrow('Europe/Moscow').format('YYYY-MM-DD')
+
+        for k, v in d.items():
+            url = f'https://almetpt.ru/2020/site/schedule/group/{v}/{tomorrow}'
+            print(k, v, url)
+
+            tomorrow = pendulum.tomorrow('Europe/Moscow').format('YYYY-MM-DD')
+            response_check_tomorrow = requests.get(url=url)
+            print(url)
+            soup = BeautifulSoup(response_check_tomorrow.text, 'lxml')
+            schedule = soup.find("div", class_="container")
+
+            if 'года не опубликовано' in schedule.text:
+                return "Расписание на завтра еще не вышло!"
+            else:
+                def send_new():
+                    options = webdriver.ChromeOptions()
+                    options.add_argument("--headless")
+                    options.add_argument('--no-sandbox')
+                    options.add_argument("--disable-dev-shm-usage")
+                    options.add_argument("--remote-debugging-port=9222")
+                    driver = webdriver.Chrome(
+                        chrome_options=options,
+                        service=Service(ChromeDriverManager().install())
+                    )
+
+                    tomorrow = pendulum.tomorrow('Europe/Moscow').format('YYYY-MM-DD')
+                    url = f'https://almetpt.ru/2020/site/schedule/group/{v}/{tomorrow}'
+                    try:
+                        driver.set_window_size(850, 1050)
+                        driver.get(url=url)
+                        driver.implicitly_wait(60)
+                        driver.get_screenshot_as_file(f"screenshots/{k}_tomorrow.png")
+                    except Exception as ex:
+                        print(ex)
+                    finally:
+                        driver.close()
+                        driver.quit()
+                    return f"screenshots/{k}_tomorrow.png"
+
+        amount_message = 0
+        amount_bad = 0
+        start_time = time.time()
+
+        for k, v in d.items():
+            try:
+                screen = send_new()
+                bot.send_message(k, "Вышло расписание на завтра!")
+                bot.send_photo(k, open(screen, 'rb'))
+                amount_message += 1
+            except Exception as e:
+                amount_bad += 1
+                pass
+
+        sending_time = time.time() - start_time
+        bot.send_message(702999620,
+                         f'✅Рассылка окончена\n'
+                         f'❗Отправлено: {amount_message}\n'
+                         f'❗Не отправлено: {amount_bad}\n'
+                         f'🕐Время выполнения рассылки - {sending_time} секунд'
+                         )
 
     @bot.message_handler(commands=['admin_check'])
     def not_admin(message):
