@@ -16,10 +16,6 @@ from telebot import custom_filters
 
 
 def start_bot():
-    global MY_GROUP
-    global HELP_TEXT
-    global GROUP_ID
-    global CHAT_BY_DATETIME
     CHAT_BY_DATETIME = {}
     GROUP_ID = {
         'АВ221': 957,
